@@ -1,0 +1,74 @@
+.mdex-mermex {
+  max-block-size: 80vh;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: grab;
+  outline: none;
+
+  &:hover {
+    border-color: #cbd5e1;
+  }
+
+  &:active {
+    cursor: grabbing;
+  }
+
+  & svg,
+  & img {
+    display: block;
+    max-width: 100%;
+    max-height: 80vh;
+    width: auto;
+    height: auto;
+    margin-inline: auto;
+  }
+
+  &:fullscreen {
+    background: #fff;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    & .mdex-mermex-toolbar {
+      opacity: 1;
+    }
+  }
+
+  &:hover .mdex-mermex-toolbar,
+  &:focus-within .mdex-mermex-toolbar {
+    opacity: 1;
+  }
+}
+
+.mdex-mermex-toolbar {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: flex;
+  gap: 4px;
+  z-index: 10;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.mdex-mermex-btn {
+  width: 28px;
+  height: 28px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #334155;
+
+  &:hover {
+    background: #f1f5f9;
+  }
+}
