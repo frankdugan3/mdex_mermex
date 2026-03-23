@@ -136,12 +136,21 @@ defmodule MDExMermex do
 
     Document.put_codefence_renderers(document, %{
       "mermaid" => fn _lang, _meta, code ->
-        svg = Mermex.render!(String.trim(code))
+        svg = code |> String.trim() |> Mermex.render!() |> sanitize_svg()
         encoded = Base.encode64(svg)
         img = ~s(<img src="data:image/svg+xml;base64,#{encoded}">)
         wrap(img, wrapper_class)
       end
     })
+  end
+
+  # mermaid-rs-renderer emits unescaped double quotes inside double-quoted XML
+  # attributes (e.g. font-family="... "Segoe UI" ..."). Browsers parsing the
+  # SVG as a standalone XML document (via data: URI) reject this as malformed.
+  defp sanitize_svg(svg) do
+    Regex.replace(~r/(font-family=")(.+?)("(?= [a-z]))/, svg, fn _, pre, value, post ->
+      pre <> String.replace(value, ~s("), "&quot;") <> post
+    end)
   end
 
   defp wrap(inner, wrapper_class) do

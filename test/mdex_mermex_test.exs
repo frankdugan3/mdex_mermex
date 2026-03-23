@@ -19,7 +19,7 @@ defmodule MDExMermexTest do
     assert html =~ "</div>"
   end
 
-  test "base64 img contains valid SVG when decoded" do
+  test "base64 img decodes to well-formed XML" do
     html = MDEx.to_html!(@markdown, plugins: [MDExMermex])
 
     [_, encoded] = String.split(html, ~s(src="data:image/svg+xml;base64,), parts: 2)
@@ -29,6 +29,12 @@ defmodule MDExMermexTest do
     assert svg =~ "<svg"
     assert svg =~ "xmlns"
     assert svg =~ "</svg>"
+
+    # mermaid-rs-renderer has a known bug where font-family attributes contain
+    # unescaped double quotes (e.g. "Segoe UI"). Verify sanitize_svg escapes
+    # them so the SVG is valid XML when parsed standalone via data: URI.
+    refute String.contains?(svg, ~s("Segoe UI"))
+    assert String.contains?(svg, "&quot;Segoe UI&quot;")
   end
 
   test "wrapper includes toolbar buttons" do
