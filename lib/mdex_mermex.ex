@@ -2,6 +2,9 @@ defmodule MDExMermex do
   @moduledoc """
   MDEx plugin that renders Mermaid diagrams server-side using Mermex (Rust NIF).
 
+  Diagrams are rendered to SVG at build time and embedded as base64 `<img>` tags,
+  providing full ID isolation between diagrams and preventing XSS from SVG content.
+
   Each rendered diagram is wrapped in an interactive container with zoom, pan,
   and fullscreen controls. CSS and JS assets are injected once per document by
   default, or can be imported manually from `assets/mdex_mermex.css` and
@@ -12,10 +15,6 @@ defmodule MDExMermex do
       MDEx.to_html!(markdown, plugins: [MDExMermex])
 
   ## Options
-
-    * `:output` - Output format for rendered diagrams. Defaults to `:inline_svg`.
-      * `:inline_svg` - Raw SVG markup directly in HTML
-      * `:img_base64` - `<img>` tag with base64-encoded SVG data URI
 
     * `:class` - Additional CSS class(es) to add to the wrapper `<div>`.
       The wrapper always has `mdex-mermex`; your classes are appended.
@@ -64,12 +63,12 @@ defmodule MDExMermex do
   @spec attach(Document.t(), keyword()) :: Document.t()
   def attach(document, options \\ []) do
     document
-    |> Document.register_options([:output, :class, :inject_css, :inject_js, :css_layer])
+    |> Document.register_options([:class, :inject_css, :inject_js, :css_layer])
     |> Document.put_options(options)
     |> Document.append_steps(
       enable_unsafe: &enable_unsafe/1,
       inject_assets: &maybe_inject_assets/1,
-      render_mermaid: &render_mermaid/1
+      register_codefence: &register_codefence/1
     )
   end
 
@@ -126,8 +125,7 @@ defmodule MDExMermex do
     end
   end
 
-  defp render_mermaid(document) do
-    output = Document.get_option(document, :output) || :inline_svg
+  defp register_codefence(document) do
     extra_class = Document.get_option(document, :class)
 
     wrapper_class =
@@ -136,26 +134,14 @@ defmodule MDExMermex do
         cls -> "mdex-mermex #{cls}"
       end
 
-    MDEx.traverse_and_update(document, fn
-      %MDEx.CodeBlock{info: "mermaid" <> _} = node ->
-        svg = Mermex.render!(String.trim(node.literal))
-
-        inner =
-          case output do
-            :inline_svg ->
-              svg
-
-            :img_base64 ->
-              encoded = Base.encode64(svg)
-              ~s(<img src="data:image/svg+xml;base64,#{encoded}">)
-          end
-
-        literal = wrap(inner, wrapper_class)
-        %MDEx.HtmlBlock{literal: literal, nodes: node.nodes}
-
-      node ->
-        node
-    end)
+    Document.put_codefence_renderers(document, %{
+      "mermaid" => fn _lang, _meta, code ->
+        svg = Mermex.render!(String.trim(code))
+        encoded = Base.encode64(svg)
+        img = ~s(<img src="data:image/svg+xml;base64,#{encoded}">)
+        wrap(img, wrapper_class)
+      end
+    })
   end
 
   defp wrap(inner, wrapper_class) do

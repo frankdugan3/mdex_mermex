@@ -11,19 +11,24 @@ defmodule MDExMermexTest do
   ```
   """
 
-  test "renders mermaid code block as inline SVG within wrapper" do
+  test "renders mermaid as base64 img tag within wrapper" do
     html = MDEx.to_html!(@markdown, plugins: [MDExMermex])
 
     assert html =~ ~s(<div class="mdex-mermex" tabindex="0">)
-    assert html =~ "<svg"
-    assert html =~ "</svg>"
+    assert html =~ ~s(<img src="data:image/svg+xml;base64,)
     assert html =~ "</div>"
   end
 
-  test "inline SVG contains valid SVG namespace" do
+  test "base64 img contains valid SVG when decoded" do
     html = MDEx.to_html!(@markdown, plugins: [MDExMermex])
 
-    assert html =~ "xmlns"
+    [_, encoded] = String.split(html, ~s(src="data:image/svg+xml;base64,), parts: 2)
+    encoded = String.split(encoded, "\"") |> hd()
+    svg = Base.decode64!(encoded)
+
+    assert svg =~ "<svg"
+    assert svg =~ "xmlns"
+    assert svg =~ "</svg>"
   end
 
   test "wrapper includes toolbar buttons" do
@@ -36,13 +41,6 @@ defmodule MDExMermexTest do
     assert html =~ "mdex-mermex-fullscreen"
   end
 
-  test "renders mermaid code block as base64 img tag within wrapper" do
-    html = MDEx.to_html!(@markdown, plugins: [{MDExMermex, output: :img_base64}])
-
-    assert html =~ ~s(<div class="mdex-mermex" tabindex="0">)
-    assert html =~ ~s(<img src="data:image/svg+xml;base64,)
-  end
-
   test "non-mermaid code blocks are left untouched" do
     markdown = """
     ```elixir
@@ -52,8 +50,7 @@ defmodule MDExMermexTest do
 
     html = MDEx.to_html!(markdown, plugins: [MDExMermex])
 
-    assert html =~ "language-elixir"
-    refute html =~ "<svg"
+    refute html =~ "data:image/svg+xml;base64,"
   end
 
   test "renders multiple mermaid blocks" do
@@ -73,11 +70,75 @@ defmodule MDExMermexTest do
 
     html = MDEx.to_html!(markdown, plugins: [MDExMermex])
 
-    svg_count = length(String.split(html, "<svg")) - 1
-    assert svg_count == 2
+    img_count = length(String.split(html, "data:image/svg+xml;base64,")) - 1
+    assert img_count == 2
 
     wrapper_count = length(String.split(html, ~s(class="mdex-mermex"))) - 1
     assert wrapper_count == 2
+  end
+
+  test "renders many diverse diagram types" do
+    markdown = """
+    ## Flowcharts
+
+    ```mermaid
+    flowchart TD
+        A[Raw Material] --> B{Inspect?}
+        B -->|Yes| C[Accept]
+        B -->|No| D[Reject]
+    ```
+
+    ```mermaid
+    flowchart LR
+        X[Order] --> Y[Schedule]
+        Y --> Z[Ship]
+    ```
+
+    ## Sequence Diagrams
+
+    ```mermaid
+    sequenceDiagram
+        participant Op as Operator
+        participant WC as Workcenter
+        Op->>WC: Start cycle
+        WC-->>Op: Done
+    ```
+
+    ## State Diagrams
+
+    ```mermaid
+    stateDiagram-v2
+        [*] --> Draft
+        Draft --> Submitted
+        Submitted --> Approved
+        Approved --> [*]
+    ```
+
+    ## Pie Charts
+
+    ```mermaid
+    pie title Defects
+        "Dimensional" : 42
+        "Surface" : 27
+        "Material" : 15
+    ```
+    """
+
+    html = MDEx.to_html!(markdown, plugins: [MDExMermex])
+
+    img_count = length(String.split(html, "data:image/svg+xml;base64,")) - 1
+    assert img_count == 5
+
+    wrapper_count = length(String.split(html, ~s(class="mdex-mermex"))) - 1
+    assert wrapper_count == 5
+  end
+
+  test "works with pre-parsed Document structs" do
+    doc = MDEx.parse_document!(@markdown)
+    html = MDEx.to_html!(doc, plugins: [MDExMermex])
+
+    assert html =~ ~s(<div class="mdex-mermex" tabindex="0">)
+    assert html =~ ~s(<img src="data:image/svg+xml;base64,)
   end
 
   test "injects CSS style block once by default" do
@@ -132,7 +193,7 @@ defmodule MDExMermexTest do
 
     assert html =~ "<style>"
     refute html =~ "<script>"
-    assert html =~ "<svg"
+    assert html =~ "data:image/svg+xml;base64,"
   end
 
   test "inject_css: false skips only CSS injection" do
@@ -140,7 +201,7 @@ defmodule MDExMermexTest do
 
     refute html =~ "<style>"
     assert html =~ "<script>"
-    assert html =~ "<svg"
+    assert html =~ "data:image/svg+xml;base64,"
   end
 
   test "both inject options false skips all asset injection" do
@@ -151,7 +212,7 @@ defmodule MDExMermexTest do
 
     refute html =~ "<style>"
     refute html =~ "<script>"
-    assert html =~ "<svg"
+    assert html =~ "data:image/svg+xml;base64,"
     assert html =~ ~s(class="mdex-mermex")
   end
 
