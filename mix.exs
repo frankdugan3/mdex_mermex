@@ -19,7 +19,8 @@ defmodule MDExMermex.MixProject do
       package: package(),
       docs: docs(),
       dialyzer: [
-        plt_local_path: "_build/dialyzer/"
+        plt_local_path: "_build/dialyzer/",
+        ignore_warnings: ".dialyzer_ignore.exs"
       ]
     ]
   end

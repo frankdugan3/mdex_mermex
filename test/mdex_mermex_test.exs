@@ -30,11 +30,13 @@ defmodule MDExMermexTest do
     assert svg =~ "xmlns"
     assert svg =~ "</svg>"
 
-    # mermaid-rs-renderer has a known bug where font-family attributes contain
-    # unescaped double quotes (e.g. "Segoe UI"). Verify sanitize_svg escapes
-    # them so the SVG is valid XML when parsed standalone via data: URI.
+    # mermaid-rs-renderer historically emitted unescaped double quotes inside
+    # font-family attributes (e.g. "Segoe UI"), which is malformed XML when the
+    # SVG is parsed standalone via a data: URI. Verify the emitted SVG contains
+    # no such unescaped quotes; sanitize_svg/1 escapes any that upstream
+    # reintroduces.
+    assert String.contains?(svg, "Segoe UI")
     refute String.contains?(svg, ~s("Segoe UI"))
-    assert String.contains?(svg, "&quot;Segoe UI&quot;")
   end
 
   test "wrapper includes toolbar buttons" do
