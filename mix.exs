@@ -1,7 +1,7 @@
 defmodule MDExMermex.MixProject do
   use Mix.Project
 
-  @version "0.1.1"
+  @version "0.1.2"
   @source_url "https://github.com/frankdugan3/mdex_mermex"
   @description "An MDEx plugin that renders Mermaid diagrams server-side using Mermex (Rust NIF)"
 

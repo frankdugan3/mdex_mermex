@@ -13,7 +13,7 @@ Add `mdex_mermex` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:mdex_mermex, "~> 0.1.1"}
+    {:mdex_mermex, "~> 0.1.2"}
   ]
 end
 ```
